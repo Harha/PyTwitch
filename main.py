@@ -9,8 +9,8 @@ from twchannel import *
 # Twitch chat server related constants
 TWITCH_HOST = "irc.twitch.tv"
 TWITCH_PORT = 6667
-TWITCH_USER = "BotName"
-TWITCH_AUTH = ""
+TWITCH_USER = "BOTNAME"
+TWITCH_AUTH = "oauth:xxxxxxxxxxxxxxxx"
 TWITCH_MEMR = ":twitch.tv/membership"
 TWITCH_CMDR = ":twitch.tv/commands"
 TWITCH_TAGR = ":twitch.tv/tags"
@@ -21,8 +21,10 @@ RBUFFR = ""
 RECMDS = ""
 
 # Twitch chat handling related variables / objects
-TWITCH_CHANNELS_RGD = []
-TWITCH_CHANNELS_CND = []
+TWITCH_CHANNELS_RGD = [TWChannel("#" + TWITCH_USER)]
+TWITCH_CHANNELS_CND = {}
+TWITCH_CHATTERS_TIMER = 0
+TWITCH_CHATTERS_FREQU = 10
 
 # Send a message to the socket
 def sendRaw(message, data):
@@ -43,15 +45,13 @@ def handle353(cmds):
     # Parse the message
     channel = cmds[4]
     # Add the channel to TWITCH_CHANNELS
-    TWITCH_CHANNELS_CND.append(TWChannel(channel))
+    TWITCH_CHANNELS_CND[channel] = (TWChannel(channel))
 
 # Handle the message 376
 def handle376(cmds):
     # Request additional information via messages
     sendRaw("CAP REQ", TWITCH_MEMR)
     sendRaw("CAP REQ", TWITCH_CMDR)
-    # Connect to bot's channel
-    sendRaw("JOIN", "#" + TWITCH_USER)
     # Connect to all registered channels
     for index, i in enumerate(TWITCH_CHANNELS_RGD):
         sendRaw("JOIN", TWITCH_CHANNELS_RGD[index])
@@ -78,6 +78,8 @@ def handlePRIVMSG(cmds):
             sendRsp(channel, nick_s, "Connected channels: " + str(TWITCH_CHANNELS_CND))
         elif (command == "registered"):
             sendRsp(channel, nick_s, "Registered channels: " + str(TWITCH_CHANNELS_RGD))
+        elif (command == "users"):
+            sendRsp(channel, nick_s, "Users on this channel: " + str(TWITCH_CHANNELS_CND[channel].viewers))
         else:
             sendRsp(channel, nick_s, "Invalid command (" + command + ").")
 
@@ -105,6 +107,8 @@ def main():
     global SOCKET
     global RBUFFR
     global RECMDS
+    global TWITCH_CHATTERS_TIMER
+    global TWITCH_CHATTERS_FREQU
     # Initially connect to the chat servers
     SOCKET.connect((TWITCH_HOST, TWITCH_PORT))
     # Send authorization information to the servers
@@ -127,6 +131,13 @@ def main():
                 print(lines[index].encode("cp850", errors = "replace").decode("cp850"), end = "\n", flush = True)
             # Then, Handle messages
             handleMessages(lines)
+        # Update CHATTERS list in each channel
+        if (TWITCH_CHATTERS_TIMER <= 0):
+            for key in TWITCH_CHANNELS_CND:
+                TWITCH_CHANNELS_CND[key].getchatters()
+            TWITCH_CHATTERS_TIMER = TWITCH_CHATTERS_FREQU
+        # Decrease CHATTERS list update timer
+        TWITCH_CHATTERS_TIMER -= 1
     # Close the socket before exit
     SOCKET.close()
 
