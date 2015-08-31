@@ -5,27 +5,13 @@ import string
 import threading
 
 # Class imports
+from config import *
 from twchannel import *
-
-# Twitch chat server related constants
-TWITCH_HOST = "irc.twitch.tv"
-TWITCH_PORT = 6667
-TWITCH_USER = "BOTNAME"
-TWITCH_AUTH = "oauth:xxxxxx"
-TWITCH_MEMR = ":twitch.tv/membership"
-TWITCH_CMDR = ":twitch.tv/commands"
-TWITCH_TAGR = ":twitch.tv/tags"
 
 # Networking related variables / objects
 SOCKET = socket.socket()
 RBUFFR = ""
 RECMDS = ""
-
-# Twitch chat handling related variables / objects
-TWITCH_CHANNELS_RGD = [TWChannel("#" + TWITCH_USER)]
-TWITCH_CHANNELS_CND = {}
-TWITCH_CHATTERS_TIMER = 0
-TWITCH_CHATTERS_FREQU = 10
 
 # Send a message to the socket
 def sendRaw(message, data):
@@ -41,12 +27,26 @@ def sendMsg(channel, message):
 def sendRsp(channel, user, message):
     sendMsg(channel, user + " -> " + message)
 
+# Handle the message PART
+def handlePART(cmds):
+    # Get the sender's username & mail
+    info_s = str.split(cmds[0], "!")
+    info_s[0] = str.lstrip(info_s[0], ':')
+    nick_s = info_s[0]
+    mail_s = info_s[1]
+    chan_s = cmds[2]
+    # Check if it's the bot itself
+    if (TWITCH_USER == nick_s):
+        TWITCH_CHANNELS_CND[chan_s].running = False
+        del TWITCH_CHANNELS_CND[chan_s]
+
 # Handle the message 353
 def handle353(cmds):
     # Parse the message
     channel = cmds[4]
     # Add the channel to TWITCH_CHANNELS and start new thread for it
-    TWITCH_CHANNELS_CND[channel] = TWChannel(channel)
+    TWITCH_CHANNELS_CND[channel] = TWChannel(channel, TWITCH_CHATTERS_FREQU)
+    TWITCH_CHANNELS_CND[channel].running = True
     TWITCH_CHANNELS_CND[channel].thread.start()
 
 # Handle the message 376
@@ -55,8 +55,8 @@ def handle376(cmds):
     sendRaw("CAP REQ", TWITCH_MEMR)
     sendRaw("CAP REQ", TWITCH_CMDR)
     # Connect to all registered channels
-    for index, i in enumerate(TWITCH_CHANNELS_RGD):
-        sendRaw("JOIN", TWITCH_CHANNELS_RGD[index])
+    for key in TWITCH_CHANNELS_RGD:
+        sendRaw("JOIN", TWITCH_CHANNELS_RGD[key])
 
 # Handle the message PING
 def handlePING(cmds):
@@ -79,7 +79,18 @@ def handlePRIVMSG(cmds):
     # Handle the message, first check for command
     if (command.startswith("!") and len(command) > 2) and len(command) < 16:
         command = str.lstrip(command, '!')
-        if (command == "connected"):
+        # First, handle commands on bot's own channel
+        if ("#" + TWITCH_USER == channel):
+            if (command == "register"):
+                registerChannel(nick_s)
+                sendRsp(channel, nick_s, "Your channel has been registered successfully!")
+            if (command == "unregister"):
+                unregisterChannel(nick_s)
+                sendRsp(channel, nick_s, "Your channel has been unregistered successfully!")
+        # Then, handle all global commands
+        if (command == "help"):
+            sendRsp(channel, nick_s, "Available commands: !help !connected !registered !users (all, #channel)")
+        elif (command == "connected"):
             sendRsp(channel, nick_s, "Connected channels: " + str(len(TWITCH_CHANNELS_CND)))
         elif (command == "registered"):
             sendRsp(channel, nick_s, "Registered channels: " + str(len(TWITCH_CHANNELS_RGD)))
@@ -96,21 +107,22 @@ def handlePRIVMSG(cmds):
                 else:
                     if (subcomm.startswith('#') == False):
                         subcomm = "#" + subcomm
-                    chattercount = getChatterCount(subcomm)
-                    if (chattercount != None):
-                        sendRsp(channel, nick_s, "Users on (" + subcomm + "): " + str(chattercount))
-                    else:
-                        sendRsp(channel, nick_s, "Invalid channel! (" + subcomm + ")")
-        #else:
-            #sendRsp(channel, nick_s, "Invalid command (" + command + ").")
+                        chattercount = getChatterCount(subcomm)
+                        if (chattercount != None):
+                            sendRsp(channel, nick_s, "Users on (" + subcomm + "): " + str(chattercount))
+                        else:
+                            sendRsp(channel, nick_s, "Invalid channel! (" + subcomm + ")")
 
 # Handle all messages sent to our bot
 def handleMessages(lines):
     for index, i in enumerate(lines):
         # Split the current line with spaces
         cmds = str.split(lines[index], " ")
+        # PART message
+        if (cmds[1] == "PART"):
+            handlePART(cmds)
         # Succesful channel join message
-        if (cmds[1] == "353"):
+        elif (cmds[1] == "353"):
             handle353(cmds)
         # After connected, do the initialization procedure
         elif (cmds[1] == "376"):
@@ -140,6 +152,26 @@ def getChatterCount(channel):
         print("Error: Invalid channel key (" + channel + "), channel not found!")
     return chattercount
 
+# Register a new channel
+def registerChannel(channel):
+    if (channel.startswith('#') == False):
+        channel = "#" + channel
+    TWITCH_CHANNELS_RGD[channel] = TWChannel(channel, TWITCH_CHATTERS_FREQU)
+    sendRaw("JOIN", TWITCH_CHANNELS_RGD[channel])
+    saveChannelData()
+    print("a New channel was registered! (" + channel + ")")
+
+# Unregister a channel
+def unregisterChannel(channel):
+    if (channel.startswith('#') == False):
+        channel = "#" + channel
+    if channel not in TWITCH_CHANNELS_RGD:
+        return
+    del TWITCH_CHANNELS_RGD[channel]
+    sendRaw("PART", channel)
+    saveChannelData()
+    print("a Channel has been unregistered! (" + channel + ")")
+
 # Main function
 def main():
     # Global variable definitions
@@ -148,6 +180,8 @@ def main():
     global RECMDS
     global TWITCH_CHATTERS_TIMER
     global TWITCH_CHATTERS_FREQU
+    # Load bot configuration
+    loadChannelData()
     # Initially connect to the chat servers
     SOCKET.connect((TWITCH_HOST, TWITCH_PORT))
     # Send authorization information to the servers
@@ -170,13 +204,6 @@ def main():
                 print(lines[index].encode("cp850", errors = "replace").decode("cp850"), end = "\n", flush = True)
             # Then, Handle messages
             handleMessages(lines)
-        # Update CHATTERS list in each channel
-        #if (TWITCH_CHATTERS_TIMER <= 0):
-        #    for key in TWITCH_CHANNELS_CND:
-        #        TWITCH_CHANNELS_CND[key].getchatters()
-        #    TWITCH_CHATTERS_TIMER = TWITCH_CHATTERS_FREQU
-        # Decrease CHATTERS list update timer
-        TWITCH_CHATTERS_TIMER -= 1
     # Close the socket before exit
     SOCKET.close()
 

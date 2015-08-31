@@ -5,17 +5,20 @@ import time
 import threading
 
 # Class imports
+from config import *
 from twurlopener import *
 
 class TWChannel(object):
 
     # Class constructor
-    def __init__(self, name):
+    def __init__(self, name, updateintrvl):
         # Assign input variables to member variables
         self.name = name.lower()
+        self.updateintrvl = updateintrvl
         self.error = False
         self.cmdsent = 0
         self.thread = threading.Thread(target = self.run)
+        self.running = False
         self.chatter_count = 0
         self.moderators = None
         self.staff = None
@@ -28,9 +31,9 @@ class TWChannel(object):
 
     # Update loop
     def run(self):
-        while True:
+        while self.running:
             self.getchatters()
-            time.sleep(5)
+            time.sleep(self.updateintrvl)
 
     # For printing the object
     def __str__(self):
