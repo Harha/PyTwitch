@@ -13,6 +13,52 @@ SOCKET = socket.socket()
 RBUFFR = ""
 RECMDS = ""
 
+## Bot channel Commands Below
+# Help request
+def botchan_help(channel, nick, cmds):
+    sendRsp(channel, nick, "Available commands: " + str(TWITCH_COMMANDS_BOTCHAN))
+
+# Register a channel for user
+def botchan_register(channel, nick, cmds):
+    registerChannel(nick)
+    sendRsp(channel, nick, "Your channel has been registered successfully!")
+
+# Unregister a channel for user
+def botchan_unregister(channel, nick, cmds):
+    unregisterChannel(nick)
+    sendRsp(channel, nick, "Your channel has been unregistered successfully!")
+
+# HashMap of command function hooks
+TWITCH_COMMANDS_BOTCHAN = {"help":botchan_help, "register":botchan_register, "unregister":botchan_unregister}
+
+## Global Commands Below
+# Help request
+def global_help(channel, nick, cmds):
+    sendRsp(channel, nick, "Available commands: " + str(TWITCH_COMMANDS_GLOBAL))
+
+# User amount request
+def global_users(channel, nick, cmds):
+    if len(cmds) <= 4:
+        sendRsp(channel, nick, "Users on this channel: " + str(getChatterCount(channel)))
+    else:
+        subcomm = cmds[4]
+        if subcomm == "all":
+            chattercount = 0
+            for key in TWITCH_CHANNELS_CND:
+                chattercount += getChatterCount(key)
+            sendRsp(channel, nick, "Users on all channels: " + str(chattercount))
+        else:
+            if subcomm.startswith('#') == False:
+                subcomm = "#" + subcomm
+                chattercount = getChatterCount(subcomm)
+                if chattercount != None:
+                    sendRsp(channel, nick, "Users on (" + subcomm + "): " + str(chattercount))
+                else:
+                    sendRsp(channel, nick, "Invalid channel! (" + subcomm + ")")
+
+# HashMap of command function hooks
+TWITCH_COMMANDS_GLOBAL = {"help":global_help, "users":global_users}
+
 # Send a message to the socket
 def sendRaw(message, data):
     sdata = bytes(message + " %s\r\n" % data, "UTF-8")
@@ -36,7 +82,7 @@ def handlePART(cmds):
     mail_s = info_s[1]
     chan_s = cmds[2]
     # Check if it's the bot itself
-    if (TWITCH_USER == nick_s):
+    if TWITCH_USER == nick_s:
         TWITCH_CHANNELS_CND[chan_s].running = False
         del TWITCH_CHANNELS_CND[chan_s]
 
@@ -74,44 +120,22 @@ def handlePRIVMSG(cmds):
     cmds[3] = str.lstrip(cmds[3], ':')
     command = cmds[3]
     # Check if the current channel state is in ERROR or not, return if True
-    if (TWITCH_CHANNELS_CND[channel].error == True):
+    if TWITCH_CHANNELS_CND[channel].error == True:
         return
     # Handle the message, first check for command
-    if (command.startswith("!") and len(command) > 2) and len(command) < 16:
+    if command.startswith("!") and len(command) > 2 and len(command) < 16:
         command = str.lstrip(command, '!')
         # First, handle commands on bot's own channel
-        if ("#" + TWITCH_USER == channel):
-            if (command == "register"):
-                registerChannel(nick_s)
-                sendRsp(channel, nick_s, "Your channel has been registered successfully!")
-            if (command == "unregister"):
-                unregisterChannel(nick_s)
-                sendRsp(channel, nick_s, "Your channel has been unregistered successfully!")
+        if "#" + TWITCH_USER == channel:
+            try:
+                TWITCH_COMMANDS_BOTCHAN[command](channel, nick_s, cmds)
+            except KeyError:
+                pass
         # Then, handle all global commands
-        if (command == "help"):
-            sendRsp(channel, nick_s, "Available commands: !help !connected !registered !users (all, #channel)")
-        elif (command == "connected"):
-            sendRsp(channel, nick_s, "Connected channels: " + str(len(TWITCH_CHANNELS_CND)))
-        elif (command == "registered"):
-            sendRsp(channel, nick_s, "Registered channels: " + str(len(TWITCH_CHANNELS_RGD)))
-        elif (command == "users"):
-            if (len(cmds) <= 4):
-                sendRsp(channel, nick_s, "Users on this channel: " + str(getChatterCount(channel)))
-            else:
-                subcomm = cmds[4]
-                if (subcomm == "all"):
-                    chattercount = 0
-                    for key in TWITCH_CHANNELS_CND:
-                        chattercount += getChatterCount(key)
-                    sendRsp(channel, nick_s, "Users on all channels: " + str(chattercount))
-                else:
-                    if (subcomm.startswith('#') == False):
-                        subcomm = "#" + subcomm
-                        chattercount = getChatterCount(subcomm)
-                        if (chattercount != None):
-                            sendRsp(channel, nick_s, "Users on (" + subcomm + "): " + str(chattercount))
-                        else:
-                            sendRsp(channel, nick_s, "Invalid channel! (" + subcomm + ")")
+        try:
+            TWITCH_COMMANDS_GLOBAL[command](channel, nick_s, cmds)
+        except KeyError:
+            pass
 
 # Handle all messages sent to our bot
 def handleMessages(lines):
@@ -119,19 +143,19 @@ def handleMessages(lines):
         # Split the current line with spaces
         cmds = str.split(lines[index], " ")
         # PART message
-        if (cmds[1] == "PART"):
+        if cmds[1] == "PART":
             handlePART(cmds)
         # Succesful channel join message
-        elif (cmds[1] == "353"):
+        elif cmds[1] == "353":
             handle353(cmds)
         # After connected, do the initialization procedure
-        elif (cmds[1] == "376"):
+        elif cmds[1] == "376":
             handle376(cmds)
         # Handle PING PONG heart pulse
-        elif (cmds[0] == "PING"):
+        elif cmds[0] == "PING":
             handlePING(cmds)
         # Handle PRIVMSG
-        elif (cmds[1] == "PRIVMSG"):
+        elif cmds[1] == "PRIVMSG":
             handlePRIVMSG(cmds)
 
 # Get the chatter list from given channel
@@ -154,7 +178,7 @@ def getChatterCount(channel):
 
 # Register a new channel
 def registerChannel(channel):
-    if (channel.startswith('#') == False):
+    if channel.startswith('#') == False:
         channel = "#" + channel
     TWITCH_CHANNELS_RGD[channel] = TWChannel(channel, TWITCH_CHATTERS_FREQU)
     sendRaw("JOIN", TWITCH_CHANNELS_RGD[channel])
@@ -163,7 +187,7 @@ def registerChannel(channel):
 
 # Unregister a channel
 def unregisterChannel(channel):
-    if (channel.startswith('#') == False):
+    if channel.startswith('#') == False:
         channel = "#" + channel
     if channel not in TWITCH_CHANNELS_RGD:
         return
@@ -191,7 +215,7 @@ def main():
     # Main loop
     while True:
         # Allocate a buffer and read data from socket and store it in it
-        RBUFFR = RBUFFR + SOCKET.recv(1024).decode("UTF-8")
+        RBUFFR = RBUFFR + SOCKET.recv(1024).decode("UTF-8", "ignore")
         RECMDS = str.split(RBUFFR, "\n")
         RBUFFR = RECMDS.pop()
         # Iterate through all received messages

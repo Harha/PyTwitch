@@ -4,8 +4,8 @@ from twchannel import *
 # Twitch chat server related constants
 TWITCH_HOST = "irc.twitch.tv"
 TWITCH_PORT = 6667
-TWITCH_USER = ""
-TWITCH_AUTH = "oauth:xxxxxxxxx"
+TWITCH_USER = "BOTNAME"
+TWITCH_AUTH = "oauth:xxxxxx"
 TWITCH_MEMR = ":twitch.tv/membership"
 TWITCH_CMDR = ":twitch.tv/commands"
 TWITCH_TAGR = ":twitch.tv/tags"
