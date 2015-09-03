@@ -50,14 +50,63 @@ def global_users(channel, nick, cmds):
         else:
             if subcomm.startswith('#') == False:
                 subcomm = "#" + subcomm
-                chattercount = getChatterCount(subcomm)
-                if chattercount != None:
-                    sendRsp(channel, nick, "Users on (" + subcomm + "): " + str(chattercount))
-                else:
-                    sendRsp(channel, nick, "Invalid channel! (" + subcomm + ")")
+            chattercount = getChatterCount(subcomm)
+            if chattercount != None:
+                sendRsp(channel, nick, "Users on (" + subcomm + "): " + str(chattercount))
+            else:
+                sendRsp(channel, nick, "Invalid channel! (" + subcomm + ")")
+
+# Channel list info request
+def global_chans(channel, nick, cmds):
+    if len(cmds) <= 4:
+        sendRsp(channel, nick, "Registered channels: " + str(len(TWITCH_CHANNELS_RGD)))
+    else:
+        subcomm = cmds[4]
+        if subcomm == "registered":
+            sendRsp(channel, nick, "Registered channels: " + str(len(TWITCH_CHANNELS_RGD)))
+        elif subcomm == "connected":
+            sendRsp(channel, nick, "Connected channels: " + str(len(TWITCH_CHANNELS_CND)))
 
 # HashMap of command function hooks
-TWITCH_COMMANDS_GLOBAL = {"help":global_help, "users":global_users}
+TWITCH_COMMANDS_GLOBAL = {"help":global_help, "users":global_users, "chans":global_chans}
+
+## Bot staff Commands Below
+# Help request
+def botstaff_help(channel, nick, cmds):
+    sendRsp(channel, nick, "Available commands: " + str(TWITCH_COMMANDS_BSTAFF))
+
+# Add a bot staff member
+def botstaff_addstaffmember(channel, nick, cmds):
+    if len(cmds) > 4:
+        addBotStaffMember(cmds[4])
+        sendRsp(channel, nick, "User (" + cmds[4] + ") has been added to the bot staff member list.")
+
+# Remove a bot staff member
+def botstaff_remstaffmember(channel, nick, cmds):
+    if len(cmds) > 4:
+        remBotStaffMember(cmds[4])
+        sendRsp(channel, nick, "User (" + cmds[4] + ") has been removed from the bot staff member list.")
+
+# Force bot to join a channel
+def botstaff_join(channel, nick, cmds):
+    if len(cmds) > 4:
+        subcomm = cmds[4]
+        if subcomm.startswith('#') == False:
+            subcomm = "#" + subcomm
+        sendRaw("JOIN", subcomm)
+        sendRsp(channel, nick, "Bot has been forced to join channel " + subcomm + ".")
+
+# Force bot to part a channel
+def botstaff_part(channel, nick, cmds):
+    if len(cmds) > 4:
+        subcomm = cmds[4]
+        if subcomm.startswith('#') == False:
+            subcomm = "#" + subcomm
+        sendRaw("PART", subcomm)
+        sendRsp(channel, nick, "Bot has been forced to part channel " + subcomm + ".")
+
+# HashMap of command function hooks
+TWITCH_COMMANDS_BSTAFF = {"help":botstaff_help, "addstaff":botstaff_addstaffmember, "remstaff":botstaff_remstaffmember, "join":botstaff_join, "part":botstaff_part}
 
 # Send a message to the socket
 def sendRaw(message, data):
@@ -136,6 +185,12 @@ def handlePRIVMSG(cmds):
             TWITCH_COMMANDS_GLOBAL[command](channel, nick_s, cmds)
         except KeyError:
             pass
+        # Then, handle bot staff member commands
+        if isBotStaffMember(nick_s):
+            try:
+                TWITCH_COMMANDS_BSTAFF[command](channel, nick_s, cmds)
+            except KeyError:
+                pass
 
 # Handle all messages sent to our bot
 def handleMessages(lines):
@@ -196,6 +251,26 @@ def unregisterChannel(channel):
     saveChannelData()
     print("a Channel has been unregistered! (" + channel + ")")
 
+# Add a new bot staff member
+def addBotStaffMember(nick):
+    TWITCH_BOT_STAFF[nick] = nick
+    saveStaffData()
+    print("a New bot staff member was added! (" + nick + ")")
+
+# Remove a bot staff member
+def remBotStaffMember(nick):
+    if nick not in TWITCH_BOT_STAFF:
+        return
+    del TWITCH_BOT_STAFF[nick]
+    saveStaffData()
+    print("a Bot staff member was removed! (" + nick + ")")
+
+# Check if nick is a bot staff member
+def isBotStaffMember(nick):
+    if nick in TWITCH_BOT_STAFF:
+        return True
+    return False
+
 # Main function
 def main():
     # Global variable definitions
@@ -206,6 +281,7 @@ def main():
     global TWITCH_CHATTERS_FREQU
     # Load bot configuration
     loadChannelData()
+    loadStaffData()
     # Initially connect to the chat servers
     SOCKET.connect((TWITCH_HOST, TWITCH_PORT))
     # Send authorization information to the servers
