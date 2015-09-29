@@ -3,10 +3,12 @@ import sys
 import socket
 import string
 import threading
+import random
 
 # Class imports
 from config import *
 from twchannel import *
+from mmakerlevel import *
 
 # Networking related variables / objects
 SOCKET = socket.socket()
@@ -16,7 +18,7 @@ RECMDS = ""
 ## Bot channel Commands Below
 # Help request
 def botchan_help(channel, nick, cmds):
-    sendRsp(channel, nick, "Available commands: " + str(TWITCH_COMMANDS_BOTCHAN))
+    sendRsp(channel, nick, "Channel Module: " + str(list(TWITCH_COMMANDS_BOTCHAN.keys())))
 
 # Register a channel for user
 def botchan_register(channel, nick, cmds):
@@ -34,7 +36,7 @@ TWITCH_COMMANDS_BOTCHAN = {"help":botchan_help, "register":botchan_register, "un
 ## Global Commands Below
 # Help request
 def global_help(channel, nick, cmds):
-    sendRsp(channel, nick, "Available commands: " + str(TWITCH_COMMANDS_GLOBAL))
+    sendRsp(channel, nick, "Global Module: " + str(list(TWITCH_COMMANDS_GLOBAL.keys())))
 
 # User amount request
 def global_users(channel, nick, cmds):
@@ -73,7 +75,7 @@ TWITCH_COMMANDS_GLOBAL = {"help":global_help, "users":global_users, "chans":glob
 ## Bot staff Commands Below
 # Help request
 def botstaff_help(channel, nick, cmds):
-    sendRsp(channel, nick, "Available commands: " + str(TWITCH_COMMANDS_BSTAFF))
+    sendRsp(channel, nick, "Staff Module: " + str(list(TWITCH_COMMANDS_BSTAFF.keys())))
 
 # Add a bot staff member
 def botstaff_addstaffmember(channel, nick, cmds):
@@ -105,8 +107,54 @@ def botstaff_part(channel, nick, cmds):
         sendRaw("PART", subcomm)
         sendRsp(channel, nick, "Bot has been forced to part channel " + subcomm + ".")
 
+# Force the bot to say a message in given channel
+def botstaff_say(channel, nick, cmds):
+    if len(cmds) > 5:
+        subcomm = cmds[4]
+        if subcomm.startswith('#') == False:
+            subcomm = "#" + subcomm
+        sendMsg(subcomm, " ".join(cmds[5::]))
+
 # HashMap of command function hooks
-TWITCH_COMMANDS_BSTAFF = {"help":botstaff_help, "addstaff":botstaff_addstaffmember, "remstaff":botstaff_remstaffmember, "join":botstaff_join, "part":botstaff_part}
+TWITCH_COMMANDS_BSTAFF = {"help":botstaff_help, "addstaff":botstaff_addstaffmember, "remstaff":botstaff_remstaffmember, "join":botstaff_join, "part":botstaff_part, "say":botstaff_say}
+
+# Mario Maker module commands Below
+# Help request
+def mmaker_help(channel, nick, cmds):
+    sendRsp(channel, nick, "MMaker Module: " + str(list(TWITCH_COMMANDS_MMAKER.keys())))
+
+# Broadcast the current mario maker level on the channel
+def mmaker_level(channel, nick, cmds):
+    sendRsp(channel, nick, "The current level is (" + TWITCH_CHANNELS_CND[channel].mmaker_level_crnt.code + ") by (" +  TWITCH_CHANNELS_CND[channel].mmaker_level_crnt.user + ").")
+
+# Add a new mario maker level to the unplayed list
+def mmaker_addlevel(channel, nick, cmds):
+    if len(cmds) > 4:
+        subcomm = cmds[4]
+        if len(subcomm) < 19:
+            return
+        TWITCH_CHANNELS_CND[channel].mmaker_levels_upl.append(MMakerLevel(subcomm, nick))
+        TWITCH_CHANNELS_CND[channel].saveLevels()
+        sendRsp(channel, nick, "a New level was added to the list.")
+
+# Choose a random mario maker level to played
+def mmaker_choose(channel, nick, cmds):
+    if len(cmds) <= 4:
+        levels = TWITCH_CHANNELS_CND[channel].mmaker_levels_upl
+        amount = len(levels)
+        if amount <= 0:
+            sendRsp(channel, nick, "Cannot choose level; The unplayed levels list is empty.")
+            return
+        randnm = random.randrange(0, amount, 1)
+        level = levels[randnm]
+        TWITCH_CHANNELS_CND[channel].mmaker_level_crnt = level
+        TWITCH_CHANNELS_CND[channel].mmaker_levels_upl.remove(level)
+        TWITCH_CHANNELS_CND[channel].mmaker_levels_pld.append(level)
+        TWITCH_CHANNELS_CND[channel].saveLevels()
+        sendRsp(channel, nick, "The current level was set to (" + level.code + ") by (" + level.user + ").")
+
+# HashMap of command function hooks
+TWITCH_COMMANDS_MMAKER = {"help":mmaker_help, "level":mmaker_level, "addlevel":mmaker_addlevel, "chooselevel":mmaker_choose}
 
 # Send a message to the socket
 def sendRaw(message, data):
@@ -185,6 +233,11 @@ def handlePRIVMSG(cmds):
             TWITCH_COMMANDS_GLOBAL[command](channel, nick_s, cmds)
         except KeyError:
             pass
+        # Then, handle mario maker related commands
+        try:
+            TWITCH_COMMANDS_MMAKER[command](channel, nick_s, cmds)
+        except KeyError:
+            pass
         # Then, handle bot staff member commands
         if isBotStaffMember(nick_s):
             try:
@@ -230,6 +283,24 @@ def getChatterCount(channel):
     except KeyError:
         print("Error: Invalid channel key (" + channel + "), channel not found!")
     return chattercount
+
+# Get the played mario maker levels from given channel
+def getMMakerPlayed(channel):
+    mmakerplayed = None
+    try:
+        mmakerplayed = TWITCH_CHANNELS_CND[channel].mmaker_levels_pld
+    except KeyError:
+        print("Error: Invalid channel key (" + channel + "), channel not found!")
+    return mmakerplayed
+
+# Get the unplayed mario maker levels from given channel
+def getMMakerUnplayed(channel):
+    mmakerunplayed = None
+    try:
+        mmakerunplayed = TWITCH_CHANNELS_CND[channel].mmaker_levels_upl
+    except KeyError:
+        print("Error: Invalid channel key (" + channel + "), channel not found!")
+    return mmakerunplayed
 
 # Register a new channel
 def registerChannel(channel):
@@ -279,6 +350,8 @@ def main():
     global RECMDS
     global TWITCH_CHATTERS_TIMER
     global TWITCH_CHATTERS_FREQU
+    # Seed global rng
+    random.seed(None)
     # Load bot configuration
     loadChannelData()
     loadStaffData()

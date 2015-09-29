@@ -2,13 +2,14 @@
 import os
 
 # Class imports
+from fileutils import *
 from twchannel import *
 
 # Twitch chat server related constants
 TWITCH_HOST = "irc.twitch.tv"
 TWITCH_PORT = 6667
-TWITCH_USER = "BOTNAME"
-TWITCH_AUTH = "oauth:xxxxxxxxxxx"
+TWITCH_USER = "botuser"
+TWITCH_AUTH = "oauth:xxxxxxxxxxxxxxx"
 TWITCH_MEMR = ":twitch.tv/membership"
 TWITCH_CMDR = ":twitch.tv/commands"
 TWITCH_TAGR = ":twitch.tv/tags"
@@ -29,8 +30,7 @@ def saveChannelData():
 
 # Load registered channels to TWITCH_CHANNELS_RGD
 def loadChannelData():
-    if not os.path.exists("channels.cfg"):
-        open("channels.cfg", "w+").close()
+    fileExists("channels.cfg")
     file = open("channels.cfg", "r")
     for line in file:
         lfixed = str.split(line, "\n")
@@ -46,8 +46,7 @@ def saveStaffData():
 
 # Load registered staff to TWITCH_BOT_STAFF
 def loadStaffData():
-    if not os.path.exists("botstaff.cfg"):
-        open("botstaff.cfg", "w+").close()
+    fileExists("botstaff.cfg")
     file = open("botstaff.cfg", "r")
     for line in file:
         lfixed = str.split(line, "\n")
