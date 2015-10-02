@@ -4,6 +4,7 @@ import socket
 import string
 import threading
 import random
+import time
 
 # Class imports
 from config import *
@@ -139,6 +140,8 @@ def mmaker_addlevel(channel, nick, cmds):
 
 # Choose a random mario maker level to played
 def mmaker_choose(channel, nick, cmds):
+    if nick != channel.lstrip("#"):
+        return
     if len(cmds) <= 4:
         levels = TWITCH_CHANNELS_CND[channel].mmaker_levels_upl
         amount = len(levels)
@@ -164,6 +167,16 @@ def sendRaw(message, data):
 
 # Send a chat message to given channel
 def sendMsg(channel, message):
+    global TWITCH_MSGS_RATE
+    rate = 40
+    if isModeratorOnChannel(TWITCH_USER, channel) or channel in TWITCH_USER:
+        rate = TWITCH_MSGS_PER_MINUTE_MOD
+    else:
+        rate = TWITCH_MSGS_PER_MINUTE_NRM
+    if TWITCH_MSGS_RATE >= rate - 1:
+        print("Error: Message rate exceeded! Message (" + message + ") wasn't sent.")
+        return
+    TWITCH_MSGS_RATE += 1
     sendRaw("PRIVMSG", channel + " :" + message)
 
 # Sends a chat response message to given user in a given channel
@@ -220,7 +233,7 @@ def handlePRIVMSG(cmds):
     if TWITCH_CHANNELS_CND[channel].error == True:
         return
     # Handle the message, first check for command
-    if command.startswith("!") and len(command) > 2 and len(command) < 16:
+    if command.startswith("!") and len(command) > 2 and len(command) < 20:
         command = str.lstrip(command, '!')
         # First, handle commands on bot's own channel
         if "#" + TWITCH_USER == channel:
@@ -342,6 +355,26 @@ def isBotStaffMember(nick):
         return True
     return False
 
+# Check if nick is a moderator on channel
+def isModeratorOnChannel(nick, channel):
+    moderators = None
+    try:
+        moderators = TWITCH_CHANNELS_CND[channel].moderators
+    except KeyError:
+        print("Error: Invalid channel key (" + channel + "), channel not found!")
+        return False
+    if nick in moderators:
+        return True
+    return False
+
+# Scheluded 1 second interval jobs
+def scheluded_ones_jobs():
+    global TWITCH_MSGS_RATE
+    while True:
+        if TWITCH_MSGS_RATE > 0:
+            TWITCH_MSGS_RATE -= 1
+        time.sleep(1)
+
 # Main function
 def main():
     # Global variable definitions
@@ -352,6 +385,9 @@ def main():
     global TWITCH_CHATTERS_FREQU
     # Seed global rng
     random.seed(None)
+    # Setup scheduled jobs
+    one_second_jobs = threading.Thread(target = scheluded_ones_jobs)
+    one_second_jobs.start()
     # Load bot configuration
     loadChannelData()
     loadStaffData()

@@ -8,7 +8,7 @@ from twchannel import *
 # Twitch chat server related constants
 TWITCH_HOST = "irc.twitch.tv"
 TWITCH_PORT = 6667
-TWITCH_USER = "botuser"
+TWITCH_USER = "botname"
 TWITCH_AUTH = "oauth:xxxxxxxxxxxxxxx"
 TWITCH_MEMR = ":twitch.tv/membership"
 TWITCH_CMDR = ":twitch.tv/commands"
@@ -20,6 +20,9 @@ TWITCH_CHANNELS_CND = {}
 TWITCH_BOT_STAFF = {}
 TWITCH_CHATTERS_TIMER = 0
 TWITCH_CHATTERS_FREQU = 5
+TWITCH_MSGS_PER_MINUTE_MOD = 200
+TWITCH_MSGS_PER_MINUTE_NRM = 40
+TWITCH_MSGS_RATE = 0
 
 # Save registered channels into a txt file
 def saveChannelData():
