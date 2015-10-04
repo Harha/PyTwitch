@@ -19,7 +19,7 @@ RECMDS = ""
 ## Bot channel Commands Below
 # Help request
 def botchan_help(channel, nick, cmds):
-    sendRsp(channel, nick, "Channel Module: " + str(list(TWITCH_COMMANDS_BOTCHAN.keys())))
+    sendRsp(channel, nick, "Commands: " + str(list(TWITCH_COMMANDS_BOTCHAN.keys())))
 
 # Register a channel for user
 def botchan_register(channel, nick, cmds):
@@ -37,7 +37,7 @@ TWITCH_COMMANDS_BOTCHAN = {"help":botchan_help, "register":botchan_register, "un
 ## Global Commands Below
 # Help request
 def global_help(channel, nick, cmds):
-    sendRsp(channel, nick, "Global Module: " + str(list(TWITCH_COMMANDS_GLOBAL.keys())))
+    sendRsp(channel, nick, "Commands: " + str(list(TWITCH_COMMANDS_GLOBAL.keys())) + " | " + botstaff_help() + " | " + mmaker_help())
 
 # User amount request
 def global_users(channel, nick, cmds):
@@ -71,12 +71,12 @@ def global_chans(channel, nick, cmds):
             sendRsp(channel, nick, "Connected channels: " + str(len(TWITCH_CHANNELS_CND)))
 
 # HashMap of command function hooks
-TWITCH_COMMANDS_GLOBAL = {"help":global_help, "users":global_users, "chans":global_chans}
+TWITCH_COMMANDS_GLOBAL = {"help":global_help, "commands":global_help, "users":global_users, "chans":global_chans}
 
 ## Bot staff Commands Below
 # Help request
-def botstaff_help(channel, nick, cmds):
-    sendRsp(channel, nick, "Staff Module: " + str(list(TWITCH_COMMANDS_BSTAFF.keys())))
+def botstaff_help():
+    return str(list(TWITCH_COMMANDS_BSTAFF.keys()))
 
 # Add a bot staff member
 def botstaff_addstaffmember(channel, nick, cmds):
@@ -117,16 +117,20 @@ def botstaff_say(channel, nick, cmds):
         sendMsg(subcomm, " ".join(cmds[5::]))
 
 # HashMap of command function hooks
-TWITCH_COMMANDS_BSTAFF = {"help":botstaff_help, "addstaff":botstaff_addstaffmember, "remstaff":botstaff_remstaffmember, "join":botstaff_join, "part":botstaff_part, "say":botstaff_say}
+TWITCH_COMMANDS_BSTAFF = {"addstaff":botstaff_addstaffmember, "remstaff":botstaff_remstaffmember, "join":botstaff_join, "part":botstaff_part, "say":botstaff_say}
 
 # Mario Maker module commands Below
 # Help request
-def mmaker_help(channel, nick, cmds):
-    sendRsp(channel, nick, "MMaker Module: " + str(list(TWITCH_COMMANDS_MMAKER.keys())))
+def mmaker_help():
+    return str(list(TWITCH_COMMANDS_MMAKER.keys()))
 
 # Broadcast the current mario maker level on the channel
 def mmaker_level(channel, nick, cmds):
     sendRsp(channel, nick, "The current level is (" + TWITCH_CHANNELS_CND[channel].mmaker_level_crnt.code + ") by (" +  TWITCH_CHANNELS_CND[channel].mmaker_level_crnt.user + ").")
+
+# Print out level information
+def mmaker_levels(channel, nick, cmds):
+    sendRsp(channel, nick, "Unplayed levels: " + str(len(TWITCH_CHANNELS_CND[channel].mmaker_levels_pld)) + " Played levels: " + str(len(TWITCH_CHANNELS_CND[channel].mmaker_levels_upl)))
 
 # Add a new mario maker level to the unplayed list
 def mmaker_addlevel(channel, nick, cmds):
@@ -143,11 +147,11 @@ def mmaker_addlevel(channel, nick, cmds):
             if n > 1 or level.code == subcomm: # max 2 levels per user at a time or no duplicates
                 return
         for level in TWITCH_CHANNELS_CND[channel].mmaker_levels_pld:
-            if level.code == subcomm
+            if level.code == subcomm:
                 return
         TWITCH_CHANNELS_CND[channel].mmaker_levels_upl.append(MMakerLevel(subcomm, nick))
         TWITCH_CHANNELS_CND[channel].saveLevels()
-        sendRsp(channel, nick, "a New level was added to the list.2")
+        sendRsp(channel, nick, "a New level was added to the list.")
 
 # Choose a random mario maker level to played
 def mmaker_choose(channel, nick, cmds):
@@ -165,10 +169,19 @@ def mmaker_choose(channel, nick, cmds):
         TWITCH_CHANNELS_CND[channel].mmaker_levels_upl.remove(level)
         TWITCH_CHANNELS_CND[channel].mmaker_levels_pld.append(level)
         TWITCH_CHANNELS_CND[channel].saveLevels()
-        sendRsp(channel, nick, "The current level was set to (" + level.code + ") by (" + level.user + ").")
+        sendRsp(channel, nick, "The current level was set to (" + level.code.upper() + ") by (" + level.user + ").")
+
+# Clear all levels
+def mmaker_clearlevels(channel, nick, cmds):
+    if nick != channel.lstrip("#"):
+        return
+    TWITCH_CHANNELS_CND[channel].mmaker_levels_upl = []
+    TWITCH_CHANNELS_CND[channel].mmaker_levels_pld = []
+    TWITCH_CHANNELS_CND[channel].saveLevels()
+    sendRsp(channel, nick, "Cleared all played & unplayed levels from current channel!")
 
 # HashMap of command function hooks
-TWITCH_COMMANDS_MMAKER = {"help":mmaker_help, "level":mmaker_level, "addlevel":mmaker_addlevel, "chooselevel":mmaker_choose}
+TWITCH_COMMANDS_MMAKER = {"level":mmaker_level, "levels":mmaker_levels, "addlevel":mmaker_addlevel, "chooselevel":mmaker_choose, "clearlevels":mmaker_clearlevels}
 
 # Send a message to the socket
 def sendRaw(message, data):
