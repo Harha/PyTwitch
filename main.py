@@ -142,6 +142,9 @@ def mmaker_addlevel(channel, nick, cmds):
                 n += 1
             if n > 1 or level.code == subcomm: # max 2 levels per user at a time or no duplicates
                 return
+        for level in TWITCH_CHANNELS_CND[channel].mmaker_levels_pld:
+            if level.code == subcomm
+                return
         TWITCH_CHANNELS_CND[channel].mmaker_levels_upl.append(MMakerLevel(subcomm, nick))
         TWITCH_CHANNELS_CND[channel].saveLevels()
         sendRsp(channel, nick, "a New level was added to the list.2")
