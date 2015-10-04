@@ -134,9 +134,17 @@ def mmaker_addlevel(channel, nick, cmds):
         subcomm = cmds[4]
         if len(subcomm) < 19:
             return
+        if not "-0000-" in subcomm:
+            return
+        n = 0
+        for level in TWITCH_CHANNELS_CND[channel].mmaker_levels_upl:
+            if level.user == nick:
+                n += 1
+            if n > 1 or level.code == subcomm: # max 2 levels per user at a time or no duplicates
+                return
         TWITCH_CHANNELS_CND[channel].mmaker_levels_upl.append(MMakerLevel(subcomm, nick))
         TWITCH_CHANNELS_CND[channel].saveLevels()
-        sendRsp(channel, nick, "a New level was added to the list.")
+        sendRsp(channel, nick, "a New level was added to the list.2")
 
 # Choose a random mario maker level to played
 def mmaker_choose(channel, nick, cmds):
