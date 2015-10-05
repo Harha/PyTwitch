@@ -116,8 +116,26 @@ def botstaff_say(channel, nick, cmds):
             subcomm = "#" + subcomm
         sendMsg(subcomm, " ".join(cmds[5::]))
 
+# Register a channel for user
+def botstaff_addchan(channel, nick, cmds):
+    if len(cmds) > 4:
+        subcomm = cmds[4]
+        if subcomm.startswith('#') == False:
+            subcomm = "#" + subcomm
+        registerChannel(subcomm.lower())
+        sendRsp(channel, nick, "Bot has been forced to register channel " + subcomm + ".")
+
+# Unregister a channel for user
+def botstaff_remchan(channel, nick, cmds):
+    if len(cmds) > 4:
+        subcomm = cmds[4]
+        if subcomm.startswith('#') == False:
+            subcomm = "#" + subcomm
+        unregisterChannel(subcomm.lower())
+        sendRsp(channel, nick, "Bot has been forced to unregister channel " + subcomm + ".")
+
 # HashMap of command function hooks
-TWITCH_COMMANDS_BSTAFF = {"addstaff":botstaff_addstaffmember, "remstaff":botstaff_remstaffmember, "join":botstaff_join, "part":botstaff_part, "say":botstaff_say}
+TWITCH_COMMANDS_BSTAFF = {"addstaff":botstaff_addstaffmember, "remstaff":botstaff_remstaffmember, "join":botstaff_join, "part":botstaff_part, "say":botstaff_say, "addchan":botstaff_addchan, "remchan":botstaff_remchan}
 
 # Mario Maker module commands Below
 # Help request
@@ -136,7 +154,7 @@ def mmaker_levels(channel, nick, cmds):
 def mmaker_addlevel(channel, nick, cmds):
     if len(cmds) > 4:
         subcomm = cmds[4]
-        if len(subcomm) < 19:
+        if len(subcomm) < 19 or len(subcomm) > 20:
             return
         if not "-0000-" in subcomm:
             return
@@ -144,10 +162,12 @@ def mmaker_addlevel(channel, nick, cmds):
         for level in TWITCH_CHANNELS_CND[channel].mmaker_levels_upl:
             if level.user == nick:
                 n += 1
-            if n > 1 or level.code == subcomm: # max 2 levels per user at a time or no duplicates
+            elif level.code.lower() == subcomm.lower(): # no duplicates
+                return
+            elif n > 1: # max 2 levels per user
                 return
         for level in TWITCH_CHANNELS_CND[channel].mmaker_levels_pld:
-            if level.code == subcomm:
+            if level.code.lower() == subcomm.lower():
                 return
         TWITCH_CHANNELS_CND[channel].mmaker_levels_upl.append(MMakerLevel(subcomm, nick))
         TWITCH_CHANNELS_CND[channel].saveLevels()
@@ -169,7 +189,8 @@ def mmaker_choose(channel, nick, cmds):
         TWITCH_CHANNELS_CND[channel].mmaker_levels_upl.remove(level)
         TWITCH_CHANNELS_CND[channel].mmaker_levels_pld.append(level)
         TWITCH_CHANNELS_CND[channel].saveLevels()
-        sendRsp(channel, nick, "The current level was set to (" + level.code.upper() + ") by (" + level.user + ").")
+        count = str(len(TWITCH_CHANNELS_CND[channel].mmaker_levels_pld))
+        sendRsp(channel, nick, "The current level was set to #" + count + " (" + level.code.upper() + ") by (" + level.user + ").")
 
 # Clear all levels
 def mmaker_clearlevels(channel, nick, cmds):
