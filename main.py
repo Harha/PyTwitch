@@ -116,6 +116,12 @@ def botstaff_say(channel, nick, cmds):
             subcomm = "#" + subcomm
         sendMsg(subcomm, " ".join(cmds[5::]))
 
+# Force the bort to broadcast a message to all channels
+def botstaff_broadcast(channel, nick, cmds):
+    if len(cmds) > 4:
+        for key in TWITCH_CHANNELS_CND:
+            sendMsg(key, " ".join(cmds[4::]))
+
 # Register a channel for user
 def botstaff_addchan(channel, nick, cmds):
     if len(cmds) > 4:
@@ -135,7 +141,7 @@ def botstaff_remchan(channel, nick, cmds):
         sendRsp(channel, nick, "Bot has been forced to unregister channel " + subcomm + ".")
 
 # HashMap of command function hooks
-TWITCH_COMMANDS_BSTAFF = {"addstaff":botstaff_addstaffmember, "remstaff":botstaff_remstaffmember, "join":botstaff_join, "part":botstaff_part, "say":botstaff_say, "addchan":botstaff_addchan, "remchan":botstaff_remchan}
+TWITCH_COMMANDS_BSTAFF = {"addstaff":botstaff_addstaffmember, "remstaff":botstaff_remstaffmember, "join":botstaff_join, "part":botstaff_part, "say":botstaff_say, "broadcast":botstaff_broadcast, "addchan":botstaff_addchan, "remchan":botstaff_remchan}
 
 # Mario Maker module commands Below
 # Help request
@@ -148,7 +154,7 @@ def mmaker_level(channel, nick, cmds):
 
 # Print out level information
 def mmaker_levels(channel, nick, cmds):
-    sendRsp(channel, nick, "Unplayed levels: " + str(len(TWITCH_CHANNELS_CND[channel].mmaker_levels_pld)) + " Played levels: " + str(len(TWITCH_CHANNELS_CND[channel].mmaker_levels_upl)))
+    sendRsp(channel, nick, "Unplayed levels: " + str(len(TWITCH_CHANNELS_CND[channel].mmaker_levels_upl)) + " Played levels: " + str(len(TWITCH_CHANNELS_CND[channel].mmaker_levels_pld)))
 
 # Add a new mario maker level to the unplayed list
 def mmaker_addlevel(channel, nick, cmds):
