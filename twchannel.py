@@ -24,6 +24,7 @@ class TWChannel(object):
         self.mmaker_levels_pld = []
         self.mmaker_levels_upl = []
         self.mmaker_level_crnt = MMakerLevel("null", "null")
+        self.mmaker_levels_max = 1
         self.chatter_count = 0
         self.moderators = None
         self.staff = None
@@ -33,7 +34,8 @@ class TWChannel(object):
         # Create urlopeners for receiving json data
         self.urlopener_chatters = TWURLOpener()
         self.urlopener_chatters.addheader("Accept", "application/vnd.twitchtv.v3+json")
-        # Load saved mario maker levels
+        # Load all saved data
+        self.loadSettings()
         self.loadLevels()
 
     # Update loop
@@ -68,6 +70,23 @@ class TWChannel(object):
         self.global_mods = jdata["chatters"]["global_mods"]
         self.viewers = jdata["chatters"]["viewers"]
 
+    # Save channel settings
+    def saveSettings(self):
+        file = open("chandata/config_" + self.name + ".cfg", "w")
+        file.write(str(self.mmaker_levels_max) + "\n")
+        file.close()
+        print("Settings saved for channel (" + self.name + ").")
+
+    # Load channel settings
+    def loadSettings(self):
+        fileExists("chandata/config_" + self.name + ".cfg")
+        file = open("chandata/config_" + self.name + ".cfg", "r")
+        lines = file.readlines()
+        if len(lines) > 0:
+            self.mmaker_levels_max = int(lines[0])
+        file.close()
+        print("Settings loaded for channel (" + self.name + ").")
+
     # Save Mario Maker level data into a txt file
     def saveLevels(self):
         file = open("chandata/mmaker_played_" + self.name + ".cfg", "w")
@@ -78,6 +97,7 @@ class TWChannel(object):
         for level in self.mmaker_levels_upl:
             file.write(level.code + " " + level.user + "\n")
         file.close()
+        print("Levels saved for channel (" + self.name + ").")
 
     # Load Mario Maker level data from a txt file
     def loadLevels(self):
@@ -97,3 +117,4 @@ class TWChannel(object):
             user = str.split(lsplit[1], "\n")[0]
             self.mmaker_levels_upl.append(MMakerLevel(code, user))
         file.close()
+        print("Levels loaded for channel (" + self.name + ").")

@@ -166,11 +166,11 @@ def mmaker_addlevel(channel, nick, cmds):
             return
         n = 0
         for level in TWITCH_CHANNELS_CND[channel].mmaker_levels_upl:
-            if level.user == nick:
+            if level.user.lower() == nick.lower():
                 n += 1
-            elif level.code.lower() == subcomm.lower(): # no duplicates
+            if level.code.lower() == subcomm.lower(): # no duplicates
                 return
-            elif n > 1: # max 2 levels per user
+            elif n > TWITCH_CHANNELS_CND[channel].mmaker_levels_max: # max level amount set by channel host
                 return
         for level in TWITCH_CHANNELS_CND[channel].mmaker_levels_pld:
             if level.code.lower() == subcomm.lower():
@@ -207,8 +207,22 @@ def mmaker_clearlevels(channel, nick, cmds):
     TWITCH_CHANNELS_CND[channel].saveLevels()
     sendRsp(channel, nick, "Cleared all played & unplayed levels from current channel!")
 
+# Set max levels per user limit
+def mmaker_maxlevels(channel, nick, cmds):
+    if len(cmds) <= 4:
+        sendRsp(channel, nick, "Max amount of unplayed levels per user is (" + str(TWITCH_CHANNELS_CND[channel].mmaker_levels_max + 1) + ").")
+        return
+    if nick != channel.lstrip("#"):
+        return
+    if len(cmds) > 4:
+        n = int(cmds[4])
+        n = max(n, 1)
+        TWITCH_CHANNELS_CND[channel].mmaker_levels_max = n
+        TWITCH_CHANNELS_CND[channel].saveSettings()
+        sendRsp(channel, nick, "Changed max amount of unplayed levels per user to " + str(n) + ".")
+
 # HashMap of command function hooks
-TWITCH_COMMANDS_MMAKER = {"level":mmaker_level, "levels":mmaker_levels, "addlevel":mmaker_addlevel, "chooselevel":mmaker_choose, "clearlevels":mmaker_clearlevels}
+TWITCH_COMMANDS_MMAKER = {"level":mmaker_level, "levels":mmaker_levels, "addlevel":mmaker_addlevel, "chooselevel":mmaker_choose, "clearlevels":mmaker_clearlevels, "maxlevels":mmaker_maxlevels}
 
 # Send a message to the socket
 def sendRaw(message, data):
