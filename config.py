@@ -8,8 +8,8 @@ from twchannel import *
 # Twitch chat server related constants
 TWITCH_HOST = "irc.twitch.tv"
 TWITCH_PORT = 6667
-TWITCH_USER = "botname"
-TWITCH_AUTH = "oauth:xxxxxxxxxxxxxxx"
+TWITCH_USER = "tanookibot"
+TWITCH_AUTH = "oauth:06o3ne2re27tg0ktg61b5tk1v54hn1"
 TWITCH_MEMR = ":twitch.tv/membership"
 TWITCH_CMDR = ":twitch.tv/commands"
 TWITCH_TAGR = ":twitch.tv/tags"
@@ -23,6 +23,10 @@ TWITCH_CHATTERS_FREQU = 5
 TWITCH_MSGS_PER_MINUTE_MOD = 200
 TWITCH_MSGS_PER_MINUTE_NRM = 40
 TWITCH_MSGS_RATE = 0
+
+# MMaker related variables
+TWITCH_MMAKER_URL_UNPLYD = "http://harha.us.to/tanookibot/chandata/mmaker_unplyd_"
+TWITCH_MMAKER_ULR_PLAYED = "http://harha.us.to/tanookibot/chandata/mmaker_played_"
 
 # Save registered channels into a txt file
 def saveChannelData():
