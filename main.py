@@ -221,8 +221,14 @@ def mmaker_maxlevels(channel, nick, cmds):
         TWITCH_CHANNELS_CND[channel].saveSettings()
         sendRsp(channel, nick, "Changed max amount of unplayed levels per user to " + str(n) + ".")
 
+# Show level list urls
+def mmaker_listlevels(channel, nick, cmds):
+    channel_fixed = channel.lstrip("#")
+    channel_fixed = "%23" + channel_fixed
+    sendRsp(channel, nick, "Unplayed levels: " + TWITCH_MMAKER_URL_UNPLYD + channel_fixed + ".cfg Played levels: " + TWITCH_MMAKER_ULR_PLAYED + channel_fixed + ".cfg")
+
 # HashMap of command function hooks
-TWITCH_COMMANDS_MMAKER = {"level":mmaker_level, "levels":mmaker_levels, "addlevel":mmaker_addlevel, "chooselevel":mmaker_choose, "clearlevels":mmaker_clearlevels, "maxlevels":mmaker_maxlevels}
+TWITCH_COMMANDS_MMAKER = {"level":mmaker_level, "levels":mmaker_levels, "addlevel":mmaker_addlevel, "chooselevel":mmaker_choose, "clearlevels":mmaker_clearlevels, "maxlevels":mmaker_maxlevels, "listlevels":mmaker_listlevels}
 
 # Send a message to the socket
 def sendRaw(message, data):
