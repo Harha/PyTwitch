@@ -434,6 +434,9 @@ def isModeratorOnChannel(nick, channel):
     except KeyError:
         print("Error: Invalid channel key (" + channel + "), channel not found!")
         return False
+    except:
+        print("Error: Unknown data when checking moderator privileges on channel (" + channel + ").")
+        return False
     if nick in moderators:
         return True
     return False
